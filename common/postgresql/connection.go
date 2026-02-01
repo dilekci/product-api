@@ -3,30 +3,44 @@ package postgresql
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/labstack/gommon/log"
 )
 
-func GetConnectionPool(context context.Context, config Config) *pgxpool.Pool {
-	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable statement_cache_mode=describe pool_max_conns=%s pool_max_conn_idle_time=%s",
+func GetConnectionPool(ctx context.Context, config Config) *pgxpool.Pool {
+
+	connString := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		config.Host,
 		config.Port,
 		config.UserName,
 		config.Password,
 		config.DbName,
-		config.MaxConnections,
-		config.MaxConnectionIdleTime)
+	)
 
-	connConfig, parseConfigErr := pgxpool.ParseConfig(connString)
-	if parseConfigErr != nil {
-		panic(parseConfigErr)
-	}
-
-	conn, err := pgxpool.ConnectConfig(context, connConfig)
+	poolConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
-		log.Error("Unable to connect to database: %v\n", err)
 		panic(err)
 	}
 
-	return conn
+	// defaults
+	if config.MaxConnections > 0 {
+		poolConfig.MaxConns = config.MaxConnections
+	} else {
+		poolConfig.MaxConns = 5
+	}
+
+	if config.MaxConnectionIdleTime > 0 {
+		poolConfig.MaxConnIdleTime = config.MaxConnectionIdleTime
+	} else {
+		poolConfig.MaxConnIdleTime = 30 * time.Second
+	}
+
+	pool, err := pgxpool.ConnectConfig(ctx, poolConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	return pool
 }

@@ -11,6 +11,11 @@ type FakeProductRepository struct {
 	products []domain.Product
 }
 
+// GetProductsByCategoryId implements [persistence.IProductRepository].
+func (fakeRepository *FakeProductRepository) GetProductsByCategoryId(categoryId int64) ([]domain.Product, error) {
+	panic("unimplemented")
+}
+
 // DeleteAllProducts implements persistence.IProductRepository.
 func (fakeRepository *FakeProductRepository) DeleteAllProducts() error {
 	fakeRepository.products = []domain.Product{}
