@@ -21,18 +21,12 @@ func (fakeRepository *FakeProductRepository) DeleteAllProducts() error {
 	fakeRepository.products = []domain.Product{}
 	return nil
 }
-
-// GetAllProductsByUser implements persistence.IProductRepository.
-func (fakeRepository *FakeProductRepository) GetAllProductsByUser(userId int64) []domain.Product {
-	return fakeRepository.products
-}
-
 func NewFakeProductRepository(initialProducts []domain.Product) persistence.IProductRepository {
 	return &FakeProductRepository{
 		products: initialProducts,
 	}
 }
-func (fakeRepository *FakeProductRepository) GettAllProducts() []domain.Product {
+func (fakeRepository *FakeProductRepository) GetAllProducts() []domain.Product {
 	return fakeRepository.products
 }
 

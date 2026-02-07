@@ -3,7 +3,7 @@ package response
 import "product-app/domain"
 
 type ErrorResponse struct {
-	ErrorDescription string `json:"errorDescription"`
+	Error string `json:"error"`
 }
 
 type ProductResponse struct {

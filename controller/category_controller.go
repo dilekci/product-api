@@ -2,9 +2,9 @@ package controller
 
 import (
 	"net/http"
+	"product-app/controller/response"
 	"product-app/domain"
 	"product-app/service"
-	"strconv"
 
 	"github.com/labstack/echo/v4"
 )
@@ -31,19 +31,17 @@ func (categoryController *CategoryController) GetAllCategories(c echo.Context) e
 }
 
 func (categoryController *CategoryController) GetCategoryById(c echo.Context) error {
-	param := c.Param("id")
-	categoryId, err := strconv.Atoi(param)
-
-	if err != nil || categoryId <= 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid category ID",
+	categoryId, err := parsePositiveIDParam(c, "id")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid category ID",
 		})
 	}
 
-	category, err := categoryController.categoryService.GetById(int64(categoryId))
+	category, err := categoryController.categoryService.GetById(categoryId)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusNotFound, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 
@@ -53,14 +51,14 @@ func (categoryController *CategoryController) GetCategoryById(c echo.Context) er
 func (categoryController *CategoryController) AddCategory(c echo.Context) error {
 	var category domain.Category
 	if err := c.Bind(&category); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
 	if err := categoryController.categoryService.AddCategory(category); err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 
@@ -70,27 +68,25 @@ func (categoryController *CategoryController) AddCategory(c echo.Context) error 
 }
 
 func (categoryController *CategoryController) UpdateCategory(c echo.Context) error {
-	param := c.Param("id")
-	categoryId, err := strconv.Atoi(param)
-
-	if err != nil || categoryId <= 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid category ID",
+	categoryId, err := parsePositiveIDParam(c, "id")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid category ID",
 		})
 	}
 
 	var category domain.Category
 	if err := c.Bind(&category); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
-	category.Id = int64(categoryId)
+	category.Id = categoryId
 
 	if err := categoryController.categoryService.UpdateCategory(category); err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 
@@ -100,18 +96,16 @@ func (categoryController *CategoryController) UpdateCategory(c echo.Context) err
 }
 
 func (categoryController *CategoryController) DeleteCategoryById(c echo.Context) error {
-	param := c.Param("id")
-	categoryId, err := strconv.Atoi(param)
-
-	if err != nil || categoryId <= 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid category ID",
+	categoryId, err := parsePositiveIDParam(c, "id")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid category ID",
 		})
 	}
 
-	if err := categoryController.categoryService.DeleteById(int64(categoryId)); err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": err.Error(),
+	if err := categoryController.categoryService.DeleteById(categoryId); err != nil {
+		return c.JSON(http.StatusNotFound, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 

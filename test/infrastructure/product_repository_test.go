@@ -17,7 +17,7 @@ func TestProductRepository_GetAll(t *testing.T) {
 		{Id: 4, Name: "Lambader", Price: 2000, Description: "Lambader açıklaması", Discount: 0, Store: "Dekorasyon Sarayı", CategoryID: 3},
 	}
 
-	actual := productRepository.GettAllProducts()
+	actual := productRepository.GetAllProducts()
 
 	assert.Len(t, actual, 4)
 	assert.Equal(t, expected, actual)
@@ -52,7 +52,7 @@ func TestProductRepository_Add(t *testing.T) {
 	err := productRepository.AddProduct(newProduct)
 	assert.NoError(t, err)
 
-	products := productRepository.GettAllProducts()
+	products := productRepository.GetAllProducts()
 	assert.Len(t, products, 1)
 	assert.Equal(t, "Phone", products[0].Name)
 }
@@ -98,6 +98,6 @@ func TestProductRepository_DeleteAll(t *testing.T) {
 	err := productRepository.DeleteAllProducts()
 	assert.NoError(t, err)
 
-	products := productRepository.GettAllProducts()
+	products := productRepository.GetAllProducts()
 	assert.Len(t, products, 0)
 }

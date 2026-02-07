@@ -38,33 +38,20 @@ func (userService *UserService) Register(username, email, password, firstName, l
 		return err
 	}
 
-	// Check if username already exists
-	if _, err := userService.userRepository.GetByUsername(username); err == nil {
-		return errors.New("username already exists")
+	if err := userService.ensureUsernameAvailable(username); err != nil {
+		return err
 	}
 
-	// Check if email already exists
-	if _, err := userService.userRepository.GetByEmail(email); err == nil {
-		return errors.New("email already exists")
+	if err := userService.ensureEmailAvailable(email); err != nil {
+		return err
 	}
 
-	// Hash password
 	hashedPassword, err := hashPassword(password)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	now := time.Now()
-	user := domain.User{
-		Username:  username,
-		Email:     email,
-		Password:  hashedPassword,
-		FirstName: firstName,
-		LastName:  lastName,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-
+	user := buildUser(username, email, hashedPassword, firstName, lastName)
 	return userService.userRepository.AddUser(user)
 }
 
@@ -109,6 +96,33 @@ func (userService *UserService) UpdateUser(user domain.User) error {
 
 func (userService *UserService) DeleteById(userId int64) error {
 	return userService.userRepository.DeleteById(userId)
+}
+
+func (userService *UserService) ensureUsernameAvailable(username string) error {
+	if _, err := userService.userRepository.GetByUsername(username); err == nil {
+		return errors.New("username already exists")
+	}
+	return nil
+}
+
+func (userService *UserService) ensureEmailAvailable(email string) error {
+	if _, err := userService.userRepository.GetByEmail(email); err == nil {
+		return errors.New("email already exists")
+	}
+	return nil
+}
+
+func buildUser(username, email, hashedPassword, firstName, lastName string) domain.User {
+	now := time.Now()
+	return domain.User{
+		Username:  username,
+		Email:     email,
+		Password:  hashedPassword,
+		FirstName: firstName,
+		LastName:  lastName,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
 }
 
 func validateRegistration(username, email, password, firstName, lastName string) error {

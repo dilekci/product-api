@@ -54,7 +54,7 @@ func (productService *ProductService) UpdatePrice(productId int64, newPrice floa
 	return productService.productRepository.UpdatePrice(productId, newPrice)
 }
 func (productService *ProductService) GetAllProducts() []domain.Product {
-	return productService.productRepository.GettAllProducts()
+	return productService.productRepository.GetAllProducts()
 }
 
 func (productService *ProductService) GetAllProductsByStore(storeName string) []domain.Product {

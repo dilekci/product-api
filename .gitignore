@@ -1,0 +1,14 @@
+.DS_Store
+.idea/
+
+*.log
+*.tmp
+
+*.exe
+*.out
+*.test
+
+coverage.out
+
+.env
+configs/.env

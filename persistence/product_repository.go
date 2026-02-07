@@ -12,7 +12,7 @@ import (
 )
 
 type IProductRepository interface {
-	GettAllProducts() []domain.Product
+	GetAllProducts() []domain.Product
 	GetProductsByCategoryId(categoryId int64) ([]domain.Product, error)
 	GetAllProductsByStore(storeName string) []domain.Product
 	AddProduct(product domain.Product) error
@@ -30,7 +30,7 @@ func NewProductRepository(dbPool *pgxpool.Pool) IProductRepository {
 	return &ProductRepository{dbPool: dbPool}
 }
 
-func (r *ProductRepository) GettAllProducts() []domain.Product {
+func (r *ProductRepository) GetAllProducts() []domain.Product {
 	ctx := context.Background()
 
 	rows, err := r.dbPool.Query(ctx,
@@ -91,8 +91,38 @@ func (r *ProductRepository) GetAllProductsByStore(storeName string) []domain.Pro
 func (r *ProductRepository) AddProduct(product domain.Product) error {
 	ctx := context.Background()
 
+	tx, err := r.dbPool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+
+	productId, err := r.insertProduct(ctx, tx, product)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+
+	if len(product.ImageUrls) > 0 {
+		if err := r.insertProductImages(ctx, tx, productId, product.ImageUrls); err != nil {
+			_ = tx.Rollback(ctx)
+			return err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (r *ProductRepository) insertProduct(
+	ctx context.Context,
+	tx pgx.Tx,
+	product domain.Product,
+) (int64, error) {
 	var productId int64
-	err := r.dbPool.QueryRow(ctx, `
+	err := tx.QueryRow(ctx, `
 		INSERT INTO products (name, price, description, discount, store, category_id)
 		VALUES ($1,$2,$3,$4,$5,$6)
 		RETURNING id
@@ -104,25 +134,27 @@ func (r *ProductRepository) AddProduct(product domain.Product) error {
 		product.Store,
 		product.CategoryID,
 	).Scan(&productId)
-
 	if err != nil {
-		return fmt.Errorf("failed to insert product: %w", err)
+		return 0, fmt.Errorf("failed to insert product: %w", err)
 	}
+	return productId, nil
+}
 
-	if len(product.ImageUrls) == 0 {
-		return nil
-	}
-
-	for _, url := range product.ImageUrls {
-		_, err := r.dbPool.Exec(ctx,
+func (r *ProductRepository) insertProductImages(
+	ctx context.Context,
+	tx pgx.Tx,
+	productId int64,
+	imageUrls []string,
+) error {
+	for _, url := range imageUrls {
+		_, err := tx.Exec(ctx,
 			`INSERT INTO product_images (product_id, image_url) VALUES ($1,$2)`,
 			productId, url,
 		)
 		if err != nil {
-			log.Warnf("⚠️ Image insert failed for product %d: %v", productId, err)
+			return fmt.Errorf("failed to insert product image: %w", err)
 		}
 	}
-
 	return nil
 }
 

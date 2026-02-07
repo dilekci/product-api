@@ -2,9 +2,11 @@ package controller
 
 import (
 	"net/http"
+	"product-app/controller/response"
+	"product-app/domain"
 	"product-app/middleware"
 	"product-app/service"
-	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -26,6 +28,33 @@ type LoginRequest struct {
 	Password        string `json:"password"`
 }
 
+type UpdateUserRequest struct {
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+type UserResponse struct {
+	Id        int64     `json:"id"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type LoginResponse struct {
+	Message string       `json:"message"`
+	Token   string       `json:"token"`
+	User    UserResponse `json:"user"`
+}
+
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
 func NewUserController(userService service.IUserService) *UserController {
 	return &UserController{userService: userService}
 }
@@ -43,157 +72,170 @@ func (userController *UserController) RegisterRoutes(e *echo.Echo) {
 }
 
 func (userController *UserController) Register(c echo.Context) error {
-	var req RegisterRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+	req, err := bindRegisterRequest(c)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
 	if err := userController.userService.Register(req.Username, req.Email, req.Password, req.FirstName, req.LastName); err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{
-		"message": "User registered successfully",
+	return c.JSON(http.StatusCreated, MessageResponse{
+		Message: "User registered successfully",
 	})
 }
 
 func (userController *UserController) Login(c echo.Context) error {
-	var req LoginRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+	req, err := bindLoginRequest(c)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
 	user, err := userController.userService.Login(req.UsernameOrEmail, req.Password)
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusUnauthorized, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 
 	// Generate JWT token
 	token, err := middleware.GenerateToken(user.Id, user.Username, user.Email)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to generate token",
+		return c.JSON(http.StatusInternalServerError, response.ErrorResponse{
+			Error: "Failed to generate token",
 		})
 	}
 
-	// Return user info without password and include token
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"message": "Login successful",
-		"token":   token,
-		"user": map[string]interface{}{
-			"id":         user.Id,
-			"username":   user.Username,
-			"email":      user.Email,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-			"created_at": user.CreatedAt,
-			"updated_at": user.UpdatedAt,
-		},
-	})
+	return c.JSON(http.StatusOK, buildLoginResponse(token, user))
 }
 
 func (userController *UserController) GetUserById(c echo.Context) error {
-	param := c.Param("id")
-	userId, err := strconv.Atoi(param)
-
-	if err != nil || userId <= 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid user ID",
-		})
-	}
-
-	user, err := userController.userService.GetById(int64(userId))
+	userId, err := parsePositiveIDParam(c, "id")
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid user ID",
 		})
 	}
 
-	// Return user info without password
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"id":         user.Id,
-		"username":   user.Username,
-		"email":      user.Email,
-		"first_name": user.FirstName,
-		"last_name":  user.LastName,
-		"created_at": user.CreatedAt,
-		"updated_at": user.UpdatedAt,
-	})
+	user, err := userController.userService.GetById(userId)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, response.ErrorResponse{
+			Error: err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, buildUserResponse(user))
 }
 
 func (userController *UserController) UpdateUser(c echo.Context) error {
-	param := c.Param("id")
-	userId, err := strconv.Atoi(param)
-
-	if err != nil || userId <= 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid user ID",
+	userId, err := parsePositiveIDParam(c, "id")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid user ID",
 		})
 	}
 
-	var updateReq struct {
-		Username  string `json:"username"`
-		Email     string `json:"email"`
-		FirstName string `json:"first_name"`
-		LastName  string `json:"last_name"`
-	}
-
-	if err := c.Bind(&updateReq); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
+	updateReq, err := bindUpdateUserRequest(c)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid request body",
 		})
 	}
 
 	// Get existing user
-	user, err := userController.userService.GetById(int64(userId))
+	user, err := userController.userService.GetById(userId)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusNotFound, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 
-	// Update only the fields provided
-	user.Username = updateReq.Username
-	user.Email = updateReq.Email
-	user.FirstName = updateReq.FirstName
-	user.LastName = updateReq.LastName
+	applyUserUpdate(&user, updateReq)
 
 	if err := userController.userService.UpdateUser(user); err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, map[string]string{
-			"error": err.Error(),
+		return c.JSON(http.StatusUnprocessableEntity, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "User updated successfully",
+	return c.JSON(http.StatusOK, MessageResponse{
+		Message: "User updated successfully",
 	})
 }
 
 func (userController *UserController) DeleteUser(c echo.Context) error {
-	param := c.Param("id")
-	userId, err := strconv.Atoi(param)
-
-	if err != nil || userId <= 0 {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid user ID",
+	userId, err := parsePositiveIDParam(c, "id")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, response.ErrorResponse{
+			Error: "Invalid user ID",
 		})
 	}
 
-	if err := userController.userService.DeleteById(int64(userId)); err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": err.Error(),
+	if err := userController.userService.DeleteById(userId); err != nil {
+		return c.JSON(http.StatusNotFound, response.ErrorResponse{
+			Error: err.Error(),
 		})
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "User deleted successfully",
+	return c.JSON(http.StatusOK, MessageResponse{
+		Message: "User deleted successfully",
 	})
+}
+
+func bindRegisterRequest(c echo.Context) (RegisterRequest, error) {
+	var req RegisterRequest
+	if err := c.Bind(&req); err != nil {
+		return RegisterRequest{}, err
+	}
+	return req, nil
+}
+
+func bindLoginRequest(c echo.Context) (LoginRequest, error) {
+	var req LoginRequest
+	if err := c.Bind(&req); err != nil {
+		return LoginRequest{}, err
+	}
+	return req, nil
+}
+
+func bindUpdateUserRequest(c echo.Context) (UpdateUserRequest, error) {
+	var req UpdateUserRequest
+	if err := c.Bind(&req); err != nil {
+		return UpdateUserRequest{}, err
+	}
+	return req, nil
+}
+
+func buildUserResponse(user domain.User) UserResponse {
+	return UserResponse{
+		Id:        user.Id,
+		Username:  user.Username,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+}
+
+func buildLoginResponse(token string, user domain.User) LoginResponse {
+	return LoginResponse{
+		Message: "Login successful",
+		Token:   token,
+		User:    buildUserResponse(user),
+	}
+}
+
+func applyUserUpdate(user *domain.User, updateReq UpdateUserRequest) {
+	user.Username = updateReq.Username
+	user.Email = updateReq.Email
+	user.FirstName = updateReq.FirstName
+	user.LastName = updateReq.LastName
 }

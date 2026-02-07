@@ -9,6 +9,7 @@ Go ve Echo ile geliştirilmiş; ürün, kategori ve kullanıcı yönetimi sağla
 - Purpose and Features
 - Architecture and Directory Layout
 - Setup and Run
+- Docker (Recommended)
 - Database Setup (Docker)
 - Environment Variables and Configuration
 - API Endpoints and Sample Requests
@@ -41,6 +42,9 @@ Key directories:
 - `persistence/`: PostgreSQL queries (pgxpool)
 - `domain/`: data models (Product, Category, User)
 - `common/`: app and PostgreSQL configuration
+- `migrations/`: database schema SQL (baseline)
+- `configs/`: environment variable examples
+- `docs/`: project documentation
 - `test/`: integration and service tests, database scripts
 
 Entry point: `main.go` (starts Echo, wires dependencies, port: `localhost:8080`).
@@ -67,6 +71,22 @@ go mod tidy
 go run main.go
 # Server: http://localhost:8080
 ```
+
+---
+
+### Docker (Recommended)
+
+Build and run with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Notes:
+
+- App runs on `http://localhost:8080`
+- Postgres is mapped to `localhost:6432`
+- Initial schema is loaded from `migrations/`
 
 ---
 
@@ -101,9 +121,11 @@ Note: For integration tests there is a separate script `test/scripts/unit_test_d
 ### Environment Variables and Configuration
 
 - JWT secret: `JWT_SECRET` (optional; if not set, a weak development default is used)
-- Database configuration: hard-coded in `common/app/configuration_manager.go`. Defaults:
+- Database configuration: ENV-based in `common/app/configuration_manager.go`. Defaults:
   - Host: `localhost`, Port: `6432`, User: `postgres`, Password: `postgres`, DB: `productapp`
-  - Update this file if you plan to use different DB credentials/ports.
+  - Override with env vars: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`,
+    `DB_MAX_CONNECTIONS`, `DB_MAX_IDLE_SECONDS`.
+Example env file: `configs/.env.example`
 
 Example run:
 
@@ -242,8 +264,7 @@ curl -H "Authorization: Bearer <JWT>" http://localhost:8080/api/v1/users/1
 
 ### Error Format
 
-- Product endpoints: `{ "errorDescription": "..." }`
-- Category and user endpoints: `{ "error": "..." }`
+- All endpoints: `{ "error": "..." }`
 
 HTTP status codes are returned according to the scenario (400/401/404/422/500 etc.).
 
@@ -290,5 +311,4 @@ Notes:
 - Provide a strong `JWT_SECRET` via environment variable
 - Change DB settings in: `common/app/configuration_manager.go`
 
-For a detailed authentication flow, see `AUTHENTICATION_GUIDE.md` (Turkish).
-
+For a detailed authentication flow, see `docs/authentication.md` (Turkish).
