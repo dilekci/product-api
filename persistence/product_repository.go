@@ -313,5 +313,8 @@ func (r *ProductRepository) loadImagesSafe(
 			images = append(images, url)
 		}
 	}
+	if len(images) == 0 {
+		return nil
+	}
 	return images
 }

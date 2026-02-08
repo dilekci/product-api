@@ -82,6 +82,12 @@ func createSchema(ctx context.Context, pool *pgxpool.Pool) {
 			category_id BIGINT
 		);
 
+		CREATE TABLE product_images (
+			id BIGSERIAL PRIMARY KEY,
+			product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+			image_url TEXT NOT NULL
+		);
+
 		CREATE TABLE users (
 			id BIGSERIAL PRIMARY KEY,
 			username TEXT NOT NULL UNIQUE,
