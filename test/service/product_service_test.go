@@ -5,6 +5,7 @@ import (
 
 	"product-app/domain"
 	"product-app/service"
+	"product-app/service/model"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -92,4 +93,35 @@ func Test_ShouldDeleteAllProducts(t *testing.T) {
 
 	products := productService.GetAllProducts()
 	assert.Len(t, products, 0)
+}
+
+func Test_ShouldAddProduct(t *testing.T) {
+	productService := setupProductService()
+
+	beforeProducts := productService.GetAllProducts()
+	assert.Equal(t, 2, len(beforeProducts))
+
+	newProduct := model.ProductCreate{
+		Name:        "Microwave",
+		Price:       800,
+		Description: "Digital microwave oven",
+		Discount:    10,
+		Store:       "ABC TECH",
+		CategoryID:  1,
+	}
+	err := productService.Add(newProduct)
+
+	assert.NoError(t, err)
+
+	afterProducts := productService.GetAllProducts()
+	assert.Equal(t, 3, len(afterProducts))
+
+	addedProduct := afterProducts[2]
+	assert.Equal(t, int64(3), addedProduct.Id)
+	assert.Equal(t, "Microwave", addedProduct.Name)
+	assert.Equal(t, float32(800), addedProduct.Price)
+	assert.Equal(t, "Digital microwave oven", addedProduct.Description)
+	assert.Equal(t, float32(10), addedProduct.Discount)
+	assert.Equal(t, "ABC TECH", addedProduct.Store)
+	assert.Equal(t, int64(1), addedProduct.CategoryID)
 }

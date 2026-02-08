@@ -11,9 +11,24 @@ type FakeProductRepository struct {
 	products []domain.Product
 }
 
+func NewFakeProductRepository(initialProducts []domain.Product) persistence.IProductRepository {
+	return &FakeProductRepository{
+		products: initialProducts,
+	}
+}
+
 // GetProductsByCategoryId implements [persistence.IProductRepository].
 func (fakeRepository *FakeProductRepository) GetProductsByCategoryId(categoryId int64) ([]domain.Product, error) {
-	panic("unimplemented")
+	var productsByCategory []domain.Product
+	for _, product := range fakeRepository.products {
+		if product.CategoryID == categoryId {
+			productsByCategory = append(productsByCategory, product)
+		}
+	}
+	if len(productsByCategory) == 0 {
+		return nil, errors.New(fmt.Sprintf("No products found with category id %d", categoryId))
+	}
+	return productsByCategory, nil
 }
 
 // DeleteAllProducts implements persistence.IProductRepository.
@@ -21,11 +36,7 @@ func (fakeRepository *FakeProductRepository) DeleteAllProducts() error {
 	fakeRepository.products = []domain.Product{}
 	return nil
 }
-func NewFakeProductRepository(initialProducts []domain.Product) persistence.IProductRepository {
-	return &FakeProductRepository{
-		products: initialProducts,
-	}
-}
+
 func (fakeRepository *FakeProductRepository) GetAllProducts() []domain.Product {
 	return fakeRepository.products
 }
