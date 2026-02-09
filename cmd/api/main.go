@@ -9,8 +9,12 @@ import (
 	"product-app/internal/config/app"
 	"product-app/internal/usecase"
 
+	httpmiddleware "product-app/internal/adapters/http/middleware"
+	prommetrics "product-app/internal/adapters/metrics/prometheus"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/labstack/echo/v4"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -24,16 +28,17 @@ func main() {
 }
 
 func buildServer(ctx context.Context) *echo.Echo {
-	// Initialize Echo HTTP server
 	e := echo.New()
 
-	// Load application configuration
 	configurationManager := app.NewConfigurationManager()
-
-	// Initialize PostgreSQL connection pool
 	dbPool := pgcommon.GetConnectionPool(ctx, configurationManager.PostgreSqlConfig)
 
+	metrics := prommetrics.New()
+	e.Use(httpmiddleware.MetricsMiddleware(metrics))
+
 	registerRoutes(e, dbPool)
+
+	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 	return e
 }
 
@@ -63,4 +68,7 @@ func registerRoutes(e *echo.Echo, dbPool *pgxpool.Pool) {
 	productController.RegisterRoutes(e)
 	categoryController.RegisterRoutes(e)
 	userController.RegisterRoutes(e)
+
+	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
+
 }
