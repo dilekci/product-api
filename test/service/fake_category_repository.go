@@ -3,15 +3,15 @@ package service
 import (
 	"errors"
 	"fmt"
-	"product-app/domain"
-	"product-app/persistence"
+	"product-app/internal/domain"
+	"product-app/internal/ports"
 )
 
 type FakeCategoryRepository struct {
 	categories []domain.Category
 }
 
-func NewFakeCategoryRepository(initial []domain.Category) persistence.ICategoryRepository {
+func NewFakeCategoryRepository(initial []domain.Category) ports.CategoryRepository {
 	return &FakeCategoryRepository{categories: initial}
 }
 

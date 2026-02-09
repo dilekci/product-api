@@ -47,9 +47,77 @@ Key directories:
 - `docs/`: project documentation
 - `test/`: integration and service tests, database scripts
 
-Entry point: `main.go` (starts Echo, wires dependencies, port: `localhost:8080`).
+Entry point: `cmd/api/main.go` (starts Echo, wires dependencies, port: `localhost:8080`).
 
 ---
+
+### Clean Architecture Overview
+
+This project follows a Clean Architecture–aligned layout where the core (domain + usecase) depends only on abstractions (`ports`), and infrastructure is isolated in adapters.
+
+**High-level structure**
+
+```mermaid
+graph TD
+  A["cmd/api (wire-up)"] --> B["adapters/http"]
+  B --> C["usecase"]
+  C --> D["ports (interfaces)"]
+  E["adapters/postgresql"] --> D
+  C --> F["domain"]
+  E --> G["PostgreSQL"]
+  B --> H["HTTP (Echo)"]
+```
+
+**Dependency Inversion (Why this is better)**
+Core depends on abstractions, not concrete DB/HTTP details.
+
+```mermaid
+graph LR
+  U["usecase"] --> P["ports (interfaces)"]
+  A["adapters/postgresql"] --> P
+  H["adapters/http"] --> U
+```
+
+**Example Use-case Flow (Create Product)**
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant HTTP as adapters/http
+  participant Usecase as usecase
+  participant Ports as ports (interfaces)
+  participant Repo as adapters/postgresql
+  participant DB as PostgreSQL
+
+  Client->>HTTP: POST /api/v1/products
+  HTTP->>Usecase: CreateProduct(command)
+  Usecase->>Ports: ProductRepository.Add(product)
+  Ports->>Repo: Add(product)
+  Repo->>DB: INSERT product
+  DB-->>Repo: OK
+  Repo-->>Usecase: OK
+  Usecase-->>HTTP: OK
+  HTTP-->>Client: 201 Created
+```
+
+**What this gives you**
+- Easier testing: usecase can be tested with fake ports.
+- Replaceable infrastructure: DB/HTTP adapters can change without touching core.
+- Clear boundaries: domain/usecase is stable; adapters are replaceable.
+
+---
+### Project Overview
+
+**Product API** is a Go + Echo REST API that manages products, categories, and users with JWT-based authentication.  
+It uses PostgreSQL as the persistence layer and follows a Clean Architecture–aligned folder structure for testability and maintainability.
+
+**Highlights**
+- Product and category CRUD
+- User registration, login, and protected user endpoints
+- JWT auth with middleware
+- PostgreSQL persistence (pgxpool)
+- Clean Architecture–aligned structure (`cmd/`, `internal/`, `ports`, `usecase`, `adapters`)
+
 
 ### Setup and Run
 
@@ -68,7 +136,7 @@ go mod tidy
 
 # Start the database (Docker) – see section below
 
-go run main.go
+go run ./cmd/api
 # Server: http://localhost:8080
 ```
 
@@ -131,7 +199,7 @@ Example run:
 
 ```bash
 export JWT_SECRET="your-super-secret-jwt-key-min-32-chars"
-go run main.go
+go run ./cmd/api
 ```
 
 ---

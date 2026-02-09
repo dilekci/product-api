@@ -1,4 +1,4 @@
-package service
+package usecase
 
 import (
 	"crypto/rand"
@@ -6,8 +6,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"product-app/domain"
-	"product-app/persistence"
+	"product-app/internal/domain"
+	"product-app/internal/ports"
 	"regexp"
 	"strings"
 	"time"
@@ -24,10 +24,10 @@ type IUserService interface {
 }
 
 type UserService struct {
-	userRepository persistence.IUserRepository
+	userRepository ports.UserRepository
 }
 
-func NewUserService(userRepository persistence.IUserRepository) IUserService {
+func NewUserService(userRepository ports.UserRepository) IUserService {
 	return &UserService{
 		userRepository: userRepository,
 	}

@@ -1,10 +1,11 @@
 package infrastructure
 
 import (
-	"product-app/domain"
-	"product-app/persistence"
 	"testing"
 	"time"
+
+	"product-app/internal/adapters/postgresql"
+	"product-app/internal/domain"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -12,7 +13,7 @@ import (
 func TestUserRepository_AddAndGetById(t *testing.T) {
 	TruncateTestData(ctx, dbPool)
 
-	repo := persistence.NewUserRepository(dbPool)
+	repo := postgresql.NewUserRepository(dbPool)
 	now := time.Now()
 
 	user := domain.User{
@@ -36,7 +37,7 @@ func TestUserRepository_AddAndGetById(t *testing.T) {
 func TestUserRepository_GetByUsername(t *testing.T) {
 	TruncateTestData(ctx, dbPool)
 
-	repo := persistence.NewUserRepository(dbPool)
+	repo := postgresql.NewUserRepository(dbPool)
 	now := time.Now()
 
 	err := repo.AddUser(domain.User{
@@ -56,7 +57,7 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 func TestUserRepository_Update(t *testing.T) {
 	TruncateTestData(ctx, dbPool)
 
-	repo := persistence.NewUserRepository(dbPool)
+	repo := postgresql.NewUserRepository(dbPool)
 	now := time.Now()
 
 	_ = repo.AddUser(domain.User{
@@ -84,7 +85,7 @@ func TestUserRepository_Update(t *testing.T) {
 func TestUserRepository_DeleteById(t *testing.T) {
 	TruncateTestData(ctx, dbPool)
 
-	repo := persistence.NewUserRepository(dbPool)
+	repo := postgresql.NewUserRepository(dbPool)
 	now := time.Now()
 
 	_ = repo.AddUser(domain.User{

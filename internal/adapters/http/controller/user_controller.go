@@ -2,17 +2,17 @@ package controller
 
 import (
 	"net/http"
-	"product-app/controller/response"
-	"product-app/domain"
-	"product-app/middleware"
-	"product-app/service"
+	"product-app/internal/adapters/http/controller/response"
+	"product-app/internal/adapters/http/middleware"
+	"product-app/internal/domain"
+	"product-app/internal/usecase"
 	"time"
 
 	"github.com/labstack/echo/v4"
 )
 
 type UserController struct {
-	userService service.IUserService
+	userService usecase.IUserService
 }
 
 type RegisterRequest struct {
@@ -55,7 +55,7 @@ type MessageResponse struct {
 	Message string `json:"message"`
 }
 
-func NewUserController(userService service.IUserService) *UserController {
+func NewUserController(userService usecase.IUserService) *UserController {
 	return &UserController{userService: userService}
 }
 

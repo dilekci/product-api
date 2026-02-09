@@ -1,29 +1,22 @@
-package persistence
+package postgresql
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"product-app/domain"
+	"product-app/internal/domain"
+	"product-app/internal/ports"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/labstack/gommon/log"
 )
 
-type ICategoryRepository interface {
-	GetAllCategories() []domain.Category
-	GetById(categoryId int64) (domain.Category, error)
-	AddCategory(category domain.Category) error
-	UpdateCategory(category domain.Category) error
-	DeleteById(categoryId int64) error
-}
-
 type CategoryRepository struct {
 	dbPool *pgxpool.Pool
 }
 
-func NewCategoryRepository(dbPool *pgxpool.Pool) ICategoryRepository {
+func NewCategoryRepository(dbPool *pgxpool.Pool) ports.CategoryRepository {
 	return &CategoryRepository{
 		dbPool: dbPool,
 	}

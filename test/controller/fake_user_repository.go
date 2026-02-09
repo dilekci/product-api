@@ -3,15 +3,15 @@ package controller
 import (
 	"errors"
 	"fmt"
-	"product-app/domain"
-	"product-app/persistence"
+	"product-app/internal/domain"
+	"product-app/internal/ports"
 )
 
 type FakeUserRepository struct {
 	users []domain.User
 }
 
-func NewFakeUserRepository(initial []domain.User) persistence.IUserRepository {
+func NewFakeUserRepository(initial []domain.User) ports.UserRepository {
 	return &FakeUserRepository{users: initial}
 }
 

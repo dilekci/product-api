@@ -1,10 +1,10 @@
-package service
+package usecase
 
 import (
 	"errors"
-	"product-app/domain"
-	"product-app/persistence"
-	"product-app/service/model"
+	"product-app/internal/domain"
+	"product-app/internal/ports"
+	"product-app/internal/usecase/model"
 	"regexp"
 )
 
@@ -20,10 +20,10 @@ type IProductService interface {
 }
 
 type ProductService struct {
-	productRepository persistence.IProductRepository
+	productRepository ports.ProductRepository
 }
 
-func NewProductService(productRepository persistence.IProductRepository) IProductService {
+func NewProductService(productRepository ports.ProductRepository) IProductService {
 	return &ProductService{
 		productRepository: productRepository,
 	}

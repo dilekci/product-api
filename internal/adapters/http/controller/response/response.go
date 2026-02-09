@@ -1,6 +1,6 @@
 package response
 
-import "product-app/domain"
+import "product-app/internal/domain"
 
 type ErrorResponse struct {
 	Error string `json:"error"`

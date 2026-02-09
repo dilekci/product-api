@@ -1,30 +1,22 @@
-package persistence
+package postgresql
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"product-app/domain"
+	"product-app/internal/domain"
+	"product-app/internal/ports"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/labstack/gommon/log"
 )
 
-type IUserRepository interface {
-	GetById(userId int64) (domain.User, error)
-	GetByUsername(username string) (domain.User, error)
-	GetByEmail(email string) (domain.User, error)
-	AddUser(user domain.User) error
-	UpdateUser(user domain.User) error
-	DeleteById(userId int64) error
-}
-
 type UserRepository struct {
 	dbPool *pgxpool.Pool
 }
 
-func NewUserRepository(dbPool *pgxpool.Pool) IUserRepository {
+func NewUserRepository(dbPool *pgxpool.Pool) ports.UserRepository {
 	return &UserRepository{
 		dbPool: dbPool,
 	}
@@ -117,7 +109,7 @@ func (userRepository *UserRepository) UpdateUser(user domain.User) error {
 
 	updateSql := `UPDATE users SET username = $1, email = $2, first_name = $3, last_name = $4, updated_at = $5 WHERE id = $6`
 
-	commandTag, err := userRepository.dbPool.Exec(ctx, updateSql, 
+	commandTag, err := userRepository.dbPool.Exec(ctx, updateSql,
 		user.Username, user.Email, user.FirstName, user.LastName, user.UpdatedAt, user.Id)
 
 	if err != nil {

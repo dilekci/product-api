@@ -4,19 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"product-app/controller"
-	"product-app/service"
 	"strings"
 	"testing"
+
+	httpcontroller "product-app/internal/adapters/http/controller"
+	"product-app/internal/usecase"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
-func setupUserController() *controller.UserController {
+func setupUserController() *httpcontroller.UserController {
 	fakeRepo := NewFakeUserRepository(nil)
-	userService := service.NewUserService(fakeRepo)
-	return controller.NewUserController(userService)
+	userService := usecase.NewUserService(fakeRepo)
+	return httpcontroller.NewUserController(userService)
 }
 
 func Test_ShouldRegisterUser(t *testing.T) {

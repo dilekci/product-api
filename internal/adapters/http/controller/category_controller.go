@@ -2,18 +2,18 @@ package controller
 
 import (
 	"net/http"
-	"product-app/controller/response"
-	"product-app/domain"
-	"product-app/service"
+	"product-app/internal/adapters/http/controller/response"
+	"product-app/internal/domain"
+	"product-app/internal/usecase"
 
 	"github.com/labstack/echo/v4"
 )
 
 type CategoryController struct {
-	categoryService service.ICategoryService
+	categoryService usecase.ICategoryService
 }
 
-func NewCategoryController(categoryService service.ICategoryService) *CategoryController {
+func NewCategoryController(categoryService usecase.ICategoryService) *CategoryController {
 	return &CategoryController{categoryService: categoryService}
 }
 

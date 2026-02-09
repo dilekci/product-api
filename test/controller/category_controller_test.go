@@ -4,25 +4,26 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"product-app/controller"
-	"product-app/domain"
-	"product-app/service"
 	"strings"
 	"testing"
+
+	httpcontroller "product-app/internal/adapters/http/controller"
+	"product-app/internal/domain"
+	"product-app/internal/usecase"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
-func setupCategoryController() *controller.CategoryController {
+func setupCategoryController() *httpcontroller.CategoryController {
 	initialCategories := []domain.Category{
 		{Id: 1, Name: "Electronics", Description: "Electronic items"},
 		{Id: 2, Name: "Books", Description: "Books and magazines"},
 	}
 
 	fakeRepo := NewFakeCategoryRepository(initialCategories)
-	categoryService := service.NewCategoryService(fakeRepo)
-	return controller.NewCategoryController(categoryService)
+	categoryService := usecase.NewCategoryService(fakeRepo)
+	return httpcontroller.NewCategoryController(categoryService)
 }
 
 func Test_ShouldGetAllCategories(t *testing.T) {

@@ -1,8 +1,9 @@
 package infrastructure
 
 import (
-	"product-app/domain"
 	"testing"
+
+	"product-app/internal/domain"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /out/product-api ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/product-api ./cmd/api
 
 
 FROM gcr.io/distroless/base-debian12:nonroot

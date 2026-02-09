@@ -3,10 +3,10 @@ package controller
 import (
 	"fmt"
 	"net/http"
-	"product-app/controller/request"
-	"product-app/controller/response"
-	"product-app/middleware"
-	"product-app/service"
+	"product-app/internal/adapters/http/controller/request"
+	"product-app/internal/adapters/http/controller/response"
+	"product-app/internal/adapters/http/middleware"
+	"product-app/internal/usecase"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -16,7 +16,7 @@ import (
 // ProductController handles HTTP requests for product operations
 // It provides endpoints for CRUD operations on products with authentication support
 type ProductController struct {
-	productService service.IProductService
+	productService usecase.IProductService
 }
 
 // NewProductController creates a new instance of ProductController
@@ -25,7 +25,7 @@ type ProductController struct {
 //
 // Returns:
 //   - *ProductController: New controller instance
-func NewProductController(productService service.IProductService) *ProductController {
+func NewProductController(productService usecase.IProductService) *ProductController {
 	return &ProductController{productService: productService}
 }
 

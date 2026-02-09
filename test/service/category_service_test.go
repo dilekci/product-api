@@ -1,21 +1,22 @@
 package service
 
 import (
-	"product-app/domain"
-	"product-app/service"
 	"testing"
+
+	"product-app/internal/domain"
+	"product-app/internal/usecase"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func setupCategoryService() service.ICategoryService {
+func setupCategoryService() usecase.ICategoryService {
 	initialCategories := []domain.Category{
 		{Id: 1, Name: "Electronics", Description: "Electronic items"},
 		{Id: 2, Name: "Books", Description: "Books and magazines"},
 	}
 
 	fakeRepository := NewFakeCategoryRepository(initialCategories)
-	return service.NewCategoryService(fakeRepository)
+	return usecase.NewCategoryService(fakeRepository)
 }
 
 func Test_ShouldGetAllCategories(t *testing.T) {

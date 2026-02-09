@@ -3,8 +3,9 @@ package infrastructure
 import (
 	"context"
 	"os"
-	"product-app/common/postgresql"
-	"product-app/persistence"
+	"product-app/internal/adapters/postgresql"
+	pgcommon "product-app/internal/adapters/postgresql/common"
+	"product-app/internal/ports"
 	"testing"
 	"time"
 
@@ -14,9 +15,9 @@ import (
 var (
 	ctx                context.Context
 	dbPool             *pgxpool.Pool
-	productRepository  persistence.IProductRepository
-	categoryRepository persistence.ICategoryRepository
-	userRepository     persistence.IUserRepository
+	productRepository  ports.ProductRepository
+	categoryRepository ports.CategoryRepository
+	userRepository     ports.UserRepository
 )
 
 func TestMain(m *testing.M) {
@@ -24,7 +25,7 @@ func TestMain(m *testing.M) {
 
 	createTestDatabase(ctx)
 
-	dbPool = postgresql.GetConnectionPool(ctx, postgresql.Config{
+	dbPool = pgcommon.GetConnectionPool(ctx, pgcommon.Config{
 		Host:     "localhost",
 		Port:     "6432",
 		DbName:   "productapp_unit_test",
@@ -34,9 +35,9 @@ func TestMain(m *testing.M) {
 
 	createSchema(ctx, dbPool)
 
-	productRepository = persistence.NewProductRepository(dbPool)
-	categoryRepository = persistence.NewCategoryRepository(dbPool)
-	userRepository = persistence.NewUserRepository(dbPool)
+	productRepository = postgresql.NewProductRepository(dbPool)
+	categoryRepository = postgresql.NewCategoryRepository(dbPool)
+	userRepository = postgresql.NewUserRepository(dbPool)
 
 	code := m.Run()
 
@@ -45,7 +46,7 @@ func TestMain(m *testing.M) {
 }
 
 func createTestDatabase(ctx context.Context) {
-	adminPool := postgresql.GetConnectionPool(ctx, postgresql.Config{
+	adminPool := pgcommon.GetConnectionPool(ctx, pgcommon.Config{
 		Host:                  "localhost",
 		Port:                  "6432",
 		DbName:                "postgres",

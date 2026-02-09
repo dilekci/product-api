@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 
-	"product-app/common/app"
-	"product-app/common/postgresql"
-	"product-app/controller"
-	"product-app/persistence"
-	"product-app/service"
+	"product-app/internal/adapters/http/controller"
+	"product-app/internal/adapters/postgresql"
+	pgcommon "product-app/internal/adapters/postgresql/common"
+	"product-app/internal/config/app"
+	"product-app/internal/usecase"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/labstack/echo/v4"
@@ -31,7 +31,7 @@ func buildServer(ctx context.Context) *echo.Echo {
 	configurationManager := app.NewConfigurationManager()
 
 	// Initialize PostgreSQL connection pool
-	dbPool := postgresql.GetConnectionPool(ctx, configurationManager.PostgreSqlConfig)
+	dbPool := pgcommon.GetConnectionPool(ctx, configurationManager.PostgreSqlConfig)
 
 	registerRoutes(e, dbPool)
 	return e
@@ -41,22 +41,22 @@ func registerRoutes(e *echo.Echo, dbPool *pgxpool.Pool) {
 	// --------------------
 	// Product dependencies
 	// --------------------
-	productRepository := persistence.NewProductRepository(dbPool)
-	productService := service.NewProductService(productRepository)
+	productRepository := postgresql.NewProductRepository(dbPool)
+	productService := usecase.NewProductService(productRepository)
 	productController := controller.NewProductController(productService)
 
 	// --------------------
 	// Category dependencies
 	// --------------------
-	categoryRepository := persistence.NewCategoryRepository(dbPool)
-	categoryService := service.NewCategoryService(categoryRepository)
+	categoryRepository := postgresql.NewCategoryRepository(dbPool)
+	categoryService := usecase.NewCategoryService(categoryRepository)
 	categoryController := controller.NewCategoryController(categoryService)
 
 	// --------------------
 	// User dependencies
 	// --------------------
-	userRepository := persistence.NewUserRepository(dbPool)
-	userService := service.NewUserService(userRepository)
+	userRepository := postgresql.NewUserRepository(dbPool)
+	userService := usecase.NewUserService(userRepository)
 	userController := controller.NewUserController(userService)
 
 	// Register HTTP routes

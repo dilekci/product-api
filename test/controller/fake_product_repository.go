@@ -1,4 +1,4 @@
-package service
+package controller
 
 import (
 	"errors"
@@ -17,7 +17,10 @@ func NewFakeProductRepository(initialProducts []domain.Product) ports.ProductRep
 	}
 }
 
-// GetProductsByCategoryId implements [persistence.IProductRepository].
+func (fakeRepository *FakeProductRepository) GetAllProducts() []domain.Product {
+	return fakeRepository.products
+}
+
 func (fakeRepository *FakeProductRepository) GetProductsByCategoryId(categoryId int64) ([]domain.Product, error) {
 	var productsByCategory []domain.Product
 	for _, product := range fakeRepository.products {
@@ -29,16 +32,6 @@ func (fakeRepository *FakeProductRepository) GetProductsByCategoryId(categoryId 
 		return nil, errors.New(fmt.Sprintf("No products found with category id %d", categoryId))
 	}
 	return productsByCategory, nil
-}
-
-// DeleteAllProducts implements persistence.IProductRepository.
-func (fakeRepository *FakeProductRepository) DeleteAllProducts() error {
-	fakeRepository.products = []domain.Product{}
-	return nil
-}
-
-func (fakeRepository *FakeProductRepository) GetAllProducts() []domain.Product {
-	return fakeRepository.products
 }
 
 func (fakeRepository *FakeProductRepository) GetAllProductsByStore(storeName string) []domain.Product {
@@ -73,6 +66,7 @@ func (fakeRepository *FakeProductRepository) GetById(productId int64) (domain.Pr
 	}
 	return domain.Product{}, errors.New(fmt.Sprintf("Product not found with id %d", productId))
 }
+
 func (fakeRepository *FakeProductRepository) DeleteById(productId int64) error {
 	foundIndex := -1
 	for i, product := range fakeRepository.products {
@@ -92,7 +86,6 @@ func (fakeRepository *FakeProductRepository) DeleteById(productId int64) error {
 
 func (fakeRepository *FakeProductRepository) UpdatePrice(productId int64, newPrice float32) error {
 	found := false
-
 	for i, product := range fakeRepository.products {
 		if product.Id == productId {
 			fakeRepository.products[i].Price = newPrice
@@ -103,5 +96,10 @@ func (fakeRepository *FakeProductRepository) UpdatePrice(productId int64, newPri
 	if !found {
 		return errors.New(fmt.Sprintf("Product not found with id %d", productId))
 	}
+	return nil
+}
+
+func (fakeRepository *FakeProductRepository) DeleteAllProducts() error {
+	fakeRepository.products = []domain.Product{}
 	return nil
 }

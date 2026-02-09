@@ -1,6 +1,6 @@
 package request
 
-import "product-app/service/model"
+import "product-app/internal/usecase/model"
 
 // AddProductRequest represents the request payload used to create a new product.
 // It is typically populated from an incoming HTTP JSON request.

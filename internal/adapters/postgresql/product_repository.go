@@ -1,32 +1,22 @@
-package persistence
+package postgresql
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"product-app/domain"
+	"product-app/internal/domain"
+	"product-app/internal/ports"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/labstack/gommon/log"
 )
 
-type IProductRepository interface {
-	GetAllProducts() []domain.Product
-	GetProductsByCategoryId(categoryId int64) ([]domain.Product, error)
-	GetAllProductsByStore(storeName string) []domain.Product
-	AddProduct(product domain.Product) error
-	GetById(productId int64) (domain.Product, error)
-	DeleteById(productId int64) error
-	UpdatePrice(productId int64, newPrice float32) error
-	DeleteAllProducts() error
-}
-
 type ProductRepository struct {
 	dbPool *pgxpool.Pool
 }
 
-func NewProductRepository(dbPool *pgxpool.Pool) IProductRepository {
+func NewProductRepository(dbPool *pgxpool.Pool) ports.ProductRepository {
 	return &ProductRepository{dbPool: dbPool}
 }
 

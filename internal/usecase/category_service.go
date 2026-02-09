@@ -1,9 +1,9 @@
-package service
+package usecase
 
 import (
 	"errors"
-	"product-app/domain"
-	"product-app/persistence"
+	"product-app/internal/domain"
+	"product-app/internal/ports"
 )
 
 type ICategoryService interface {
@@ -15,10 +15,10 @@ type ICategoryService interface {
 }
 
 type CategoryService struct {
-	categoryRepository persistence.ICategoryRepository
+	categoryRepository ports.CategoryRepository
 }
 
-func NewCategoryService(categoryRepository persistence.ICategoryRepository) ICategoryService {
+func NewCategoryService(categoryRepository ports.CategoryRepository) ICategoryService {
 	return &CategoryService{
 		categoryRepository: categoryRepository,
 	}

@@ -3,14 +3,14 @@ package service
 import (
 	"testing"
 
-	"product-app/domain"
-	"product-app/service"
-	"product-app/service/model"
+	"product-app/internal/domain"
+	"product-app/internal/usecase"
+	"product-app/internal/usecase/model"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func setupProductService() service.IProductService {
+func setupProductService() usecase.IProductService {
 	initialProducts := []domain.Product{
 		{
 			Id:    1,
@@ -27,7 +27,7 @@ func setupProductService() service.IProductService {
 	}
 
 	fakeRepository := NewFakeProductRepository(initialProducts)
-	return service.NewProductService(fakeRepository)
+	return usecase.NewProductService(fakeRepository)
 }
 
 func Test_ShouldGetAllProducts(t *testing.T) {

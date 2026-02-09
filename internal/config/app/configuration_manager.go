@@ -2,7 +2,7 @@ package app
 
 import (
 	"os"
-	"product-app/common/postgresql"
+	"product-app/internal/adapters/postgresql/common"
 	"strconv"
 	"time"
 )
