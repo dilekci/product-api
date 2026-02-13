@@ -1,382 +1,155 @@
-## Product API (Go + Echo)
+## Product Platform (Go Microservices)
 
-Go ve Echo ile geliştirilmiş; ürün, kategori ve kullanıcı yönetimi sağlayan katmanlı bir REST API.
+Product, Category, and User/Auth services built with Go + Echo. Each service is isolated with its own database, and shared cross‑cutting concerns live under `shared/`.
 
 ---
 
 ### Table of Contents
 
-- Purpose and Features
-- Architecture and Directory Layout
-- Setup and Run
-- Docker (Recommended)
-- Database Setup (Docker)
-- Environment Variables and Configuration
-- API Endpoints and Sample Requests
-- Validation Rules and Error Format
-- Running Tests
-- Technologies
+- Overview
+- Architecture
+- Services and Ports
+- Run (Docker)
+- Environment Variables
+- API Quick Test
+- Tests
 
 ---
 
-### Purpose and Features
+### Overview
 
-- Product CRUD: list, get by id, create, update price, delete, delete all
-- Category CRUD: list, get by id, create, update, delete
-- User registration and login, user endpoints protected with JWT
-- Persistent data layer on PostgreSQL (pgxpool)
-- Layered architecture: Controller → Service → Repository → DB
-- Unit and integration tests (with a test database)
+This repository contains three microservices:
 
----
+- `product-service` (port `8081`) — product CRUD
+- `category-service` (port `8082`) — category CRUD
+- `user-service` (port `8083`) — auth + user CRUD (JWT issuer)
 
-### Architecture and Directory Layout
-
-High-level flow: HTTP (Echo) → Controller → Service (business rules) → Repository (SQL) → PostgreSQL.
-
-Key directories:
-
-- `controller/`: HTTP endpoints (product, category, user)
-- `middleware/`: JWT generation and validation
-- `service/`: business rules and validation
-- `persistence/`: PostgreSQL queries (pgxpool)
-- `domain/`: data models (Product, Category, User)
-- `common/`: app and PostgreSQL configuration
-- `migrations/`: database schema SQL (baseline)
-- `configs/`: environment variable examples
-- `docs/`: project documentation
-- `test/`: integration and service tests, database scripts
-
-Entry point: `cmd/api/main.go` (starts Echo, wires dependencies, port: `localhost:8080`).
+Each service has its own PostgreSQL database.
 
 ---
 
-### Clean Architecture Overview
-
-This project follows a Clean Architecture–aligned layout where the core (domain + usecase) depends only on abstractions (`ports`), and infrastructure is isolated in adapters.
+### Architecture
 
 **High-level structure**
 
 ```mermaid
 graph TD
-  A["cmd/api (wire-up)"] --> B["adapters/http"]
+  A["services/product"] --> B["internal"]
+  C["services/category"] --> D["internal"]
+  E["services/user"] --> F["internal"]
+  G["shared"] --> B
+  G --> D
+  G --> F
+```
+
+**Inside each service (Clean Architecture aligned)**
+
+```mermaid
+graph TD
+  A["cmd/api"] --> B["adapters/http"]
   B --> C["usecase"]
-  C --> D["ports (interfaces)"]
+  C --> D["ports"]
   E["adapters/postgresql"] --> D
   C --> F["domain"]
-  E --> G["PostgreSQL"]
-  B --> H["HTTP (Echo)"]
 ```
 
-**Dependency Inversion (Why this is better)**
-Core depends on abstractions, not concrete DB/HTTP details.
-
-```mermaid
-graph LR
-  U["usecase"] --> P["ports (interfaces)"]
-  A["adapters/postgresql"] --> P
-  H["adapters/http"] --> U
-```
-
-**Example Use-case Flow (Create Product)**
-
-```mermaid
-sequenceDiagram
-  participant Client
-  participant HTTP as adapters/http
-  participant Usecase as usecase
-  participant Ports as ports (interfaces)
-  participant Repo as adapters/postgresql
-  participant DB as PostgreSQL
-
-  Client->>HTTP: POST /api/v1/products
-  HTTP->>Usecase: CreateProduct(command)
-  Usecase->>Ports: ProductRepository.Add(product)
-  Ports->>Repo: Add(product)
-  Repo->>DB: INSERT product
-  DB-->>Repo: OK
-  Repo-->>Usecase: OK
-  Usecase-->>HTTP: OK
-  HTTP-->>Client: 201 Created
-```
-
-**What this gives you**
-- Easier testing: usecase can be tested with fake ports.
-- Replaceable infrastructure: DB/HTTP adapters can change without touching core.
-- Clear boundaries: domain/usecase is stable; adapters are replaceable.
+**Why this structure matters**
+- Clear boundaries and dependency inversion
+- Easier testing (usecase depends on interfaces)
+- Replaceable infrastructure per service
 
 ---
-### Project Overview
 
-**Product API** is a Go + Echo REST API that manages products, categories, and users with JWT-based authentication.  
-It uses PostgreSQL as the persistence layer and follows a Clean Architecture–aligned folder structure for testability and maintainability.
+### Services and Ports
 
-**Highlights**
-- Product and category CRUD
-- User registration, login, and protected user endpoints
-- JWT auth with middleware
-- PostgreSQL persistence (pgxpool)
-- Clean Architecture–aligned structure (`cmd/`, `internal/`, `ports`, `usecase`, `adapters`)
+| Service | Port | Database | DB Port |
+|---|---|---|---|
+| product-service | 8081 | product_db | 6433 |
+| category-service | 8082 | category_db | 6434 |
+| user-service | 8083 | user_db | 6435 |
 
+Prometheus: `http://localhost:9090`  
+Grafana: `http://localhost:3000` (admin/admin)
 
-### Setup and Run
+---
 
-Prerequisites:
-
-- Go (go.mod: `go 1.24`) – Go 1.21+ recommended
-- Docker (for the database)
-- cURL/Postman (to test endpoints)
-
-Steps:
+### Run (Docker)
 
 ```bash
-git clone <repo_url>
-cd product-api
-go mod tidy
-
-# Start the database (Docker) – see section below
-
-go run ./cmd/api
-# Server: http://localhost:8080
+docker compose up --build product product-db category category-db user user-db prometheus grafana
 ```
 
 ---
 
-### Docker (Recommended)
+### Environment Variables
 
-Build and run with Docker Compose:
+All services use the same variable names:
 
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `DB_MAX_CONNECTIONS`
+- `DB_MAX_IDLE_SECONDS`
+- `JWT_SECRET`
+
+Make sure `JWT_SECRET` is the same for all services so tokens are verifiable.
+
+---
+
+### API Quick Test
+
+**Register** (user-service)
 ```bash
-docker compose up --build
+curl -X POST http://localhost:8083/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"john","email":"john@test.com","password":"secret123","first_name":"John","last_name":"Doe"}'
 ```
 
-Notes:
-
-- App runs on `http://localhost:8080`
-- Postgres is mapped to `localhost:6432`
-- Initial schema is loaded from `migrations/`
-
----
-
-### Database Setup (Docker)
-
-By default the app connects to PostgreSQL at `localhost:6432`. To start a dev/test database with Docker:
-
+**Login** (token)
 ```bash
-cd test/scripts
-chmod +x test_db.sh
-./test_db.sh
-cd ../..
+curl -X POST http://localhost:8083/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username_or_email":"john","password":"secret123"}'
 ```
 
-What the script does:
-
-- Starts a `postgres-test` container from `postgres:latest` (host port 6432)
-- Creates the `productapp` database
-- Creates `products`, `product_images`, `categories`, `users` tables and sets up relationships
-- Inserts sample categories
-
-Cleanup (optional):
-
+**Create Category** (category-service, JWT required)
 ```bash
-docker rm -f postgres-test || true
+curl -X POST http://localhost:8082/api/v1/categories \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Electronics","description":"Devices"}'
 ```
 
-Note: For integration tests there is a separate script `test/scripts/unit_test_db.sh` that creates a `productapp_unit_test` database.
-
----
-
-### Environment Variables and Configuration
-
-- JWT secret: `JWT_SECRET` (optional; if not set, a weak development default is used)
-- Database configuration: ENV-based in `common/app/configuration_manager.go`. Defaults:
-  - Host: `localhost`, Port: `6432`, User: `postgres`, Password: `postgres`, DB: `productapp`
-  - Override with env vars: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`,
-    `DB_MAX_CONNECTIONS`, `DB_MAX_IDLE_SECONDS`.
-Example env file: `configs/.env.example`
-
-Example run:
-
+**Create Product** (product-service, JWT required)
 ```bash
-export JWT_SECRET="your-super-secret-jwt-key-min-32-chars"
-go run ./cmd/api
+curl -X POST http://localhost:8081/api/v1/products \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"AirFryer","price":1000,"description":"Digital air fryer","discount":10,"store":"ABC TECH","category_id":1}'
 ```
 
 ---
 
-### API Endpoints
+### Tests
 
-Base URL: `http://localhost:8080/api/v1`
-
-#### Products
-
-- GET `/products`
-  - List all products. Optional `store` query to filter by store: `/products?store=ABC%20TECH`
-- GET `/products/:id`
-  - Get product by id
-- GET `/categories/:id/products`
-  - Get products by category
-- POST `/products`
-  - Create a new product (public)
-- PUT `/products/:id`
-  - Update product price (requires JWT)
-- DELETE `/products/:id`
-  - Delete a product (requires JWT)
-- DELETE `/products/deleteAll`
-  - Delete all products (requires JWT)
-
-Request body (POST /products):
-
-```json
-{
-  "name": "AirFryer",
-  "price": 3000,
-  "description": "AirFryer açıklaması",
-  "discount": 10,
-  "store": "ABC TECH",
-  "image_urls": ["https://example.com/img1.jpg"],
-  "category_id": 1
-}
-```
-
-Response (GET /products/:id):
-
-```json
-{
-  "name": "AirFryer",
-  "price": 3000,
-  "description": "AirFryer açıklaması",
-  "discount": 10,
-  "store": "ABC TECH",
-  "image_urls": ["https://example.com/img1.jpg"],
-  "category_id": 1
-}
-```
-
-Note: The Product GET response intentionally omits the `id` field due to the current response mapping.
-
-#### Categories
-
-- GET `/categories`
-- GET `/categories/:id`
-- POST `/categories`
-- PUT `/categories/:id`
-- DELETE `/categories/:id`
-
-Request body (POST/PUT):
-
-```json
-{
-  "name": "Electronics",
-  "description": "Electronic devices and gadgets"
-}
-```
-
-#### Authentication and Users
-
-- POST `/auth/register`
-  - User registration
-- POST `/auth/login`
-  - Login and obtain a JWT token
-- GET `/users/:id` (requires JWT)
-- PUT `/users/:id` (requires JWT)
-- DELETE `/users/:id` (requires JWT)
-
-Login response example:
-
-```json
-{
-  "message": "Login successful",
-  "token": "<JWT>",
-  "user": {
-    "id": 1,
-    "username": "johndoe",
-    "email": "john@example.com",
-    "first_name": "John",
-    "last_name": "Doe",
-    "created_at": "2024-01-01T10:00:00Z",
-    "updated_at": "2024-01-01T10:00:00Z"
-  }
-}
-```
-
-JWT usage example (protected endpoints):
-
+Run all service tests:
 ```bash
-curl -H "Authorization: Bearer <JWT>" http://localhost:8080/api/v1/users/1
+go test ./services/... -v
 ```
 
----
-
-### Validation Rules
-
-#### Product
-
-- `name`: required, alphanumeric plus spaces
-- `price`: must be > 0
-- `store`: required, alphanumeric plus spaces
-- `discount`: must be between 0 and 70
-
-#### Category
-
-- `name`: required
-- `description`: required
-
-#### User
-
-- Registration: `username` (min 3), `email` (valid format), `password` (min 6), `first_name`, `last_name`
-- Login: `username_or_email` and `password` are required
-- Passwords are hashed with Argon2 and compared in constant time
-
----
-
-### Error Format
-
-- All endpoints: `{ "error": "..." }`
-
-HTTP status codes are returned according to the scenario (400/401/404/422/500 etc.).
-
----
-
-### Running Tests
-
-Initialize the test database for integration tests:
-
+Run per service:
 ```bash
-cd test/scripts
-chmod +x unit_test_db.sh
-./unit_test_db.sh
-cd ../..
+go test ./services/product/... -v
+go test ./services/category/... -v
+go test ./services/user/... -v
 ```
-
-Then run tests:
-
-```bash
-go test ./...
-```
-
-Notes:
-
-- Integration tests use `localhost:6432` and the `productapp_unit_test` database
-- Tests truncate and re-seed table data
 
 ---
 
-### Technologies
+### Notes
 
-- Go, Echo (`github.com/labstack/echo/v4`)
-- PostgreSQL, pgx/pgxpool
-- JWT (`github.com/golang-jwt/jwt/v5`)
-- Argon2 (password hashing)
-- Testing: `testing`, `github.com/stretchr/testify`
-
----
-
-### Tips
-
-- Server: `http://localhost:8080`
-- Default DB connection is `localhost:6432` (Docker script maps this port)
-- Provide a strong `JWT_SECRET` via environment variable
-- Change DB settings in: `common/app/configuration_manager.go`
-
-For a detailed authentication flow, see `docs/authentication.md` (Turkish).
+- Metrics endpoints are exposed at `/metrics` (e.g. `http://localhost:8081/metrics`).
+- Prometheus scrapes all three services.
+- Grafana is available on port `3000`.

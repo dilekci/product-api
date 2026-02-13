@@ -1,38 +1,116 @@
-version: "3.9"
-
 services:
-  api:
+  product:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: services/product/Dockerfile
     environment:
-      DB_HOST: db
+      DB_HOST: product-db
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: postgres
-      DB_NAME: productapp
+      DB_NAME: product_db
       DB_MAX_CONNECTIONS: 10
       DB_MAX_IDLE_SECONDS: 30
       JWT_SECRET: change-me-in-production
     ports:
-      - "8080:8080"
+      - "8081:8081"
     depends_on:
-      db:
+      product-db:
         condition: service_healthy
     networks:
       - app-net
 
-  db:
+  product-db:
     image: postgres:16
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: productapp
+      POSTGRES_DB: product_db
     ports:
-      - "6432:5432"
+      - "6433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d:ro
+      - productdata:/var/lib/postgresql/data
+      - ./services/product/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  category:
+    build:
+      context: .
+      dockerfile: services/category/Dockerfile
+    environment:
+      DB_HOST: category-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: category_db
+      DB_MAX_CONNECTIONS: 10
+      DB_MAX_IDLE_SECONDS: 30
+      JWT_SECRET: change-me-in-production
+    ports:
+      - "8082:8082"
+    depends_on:
+      category-db:
+        condition: service_healthy
+    networks:
+      - app-net
+
+  category-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: category_db
+    ports:
+      - "6434:5432"
+    volumes:
+      - categorydata:/var/lib/postgresql/data
+      - ./services/category/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
+  user:
+    build:
+      context: .
+      dockerfile: services/user/Dockerfile
+    environment:
+      DB_HOST: user-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: user_db
+      DB_MAX_CONNECTIONS: 10
+      DB_MAX_IDLE_SECONDS: 30
+      JWT_SECRET: change-me-in-production
+    ports:
+      - "8083:8083"
+    depends_on:
+      user-db:
+        condition: service_healthy
+    networks:
+      - app-net
+
+  user-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: user_db
+    ports:
+      - "6435:5432"
+    volumes:
+      - userdata:/var/lib/postgresql/data
+      - ./services/user/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -48,7 +126,9 @@ services:
     ports:
       - "9090:9090"
     depends_on:
-      - api
+      - product
+      - category
+      - user
     networks:
       - app-net
 
@@ -64,10 +144,10 @@ services:
     networks:
       - app-net
 
-
-
 volumes:
-  pgdata:
+  productdata:
+  categorydata:
+  userdata:
 
 networks:
   app-net:

@@ -3,15 +3,15 @@ package service
 import (
 	"errors"
 	"fmt"
-	"product-app/domain"
-	"product-app/persistence"
+	"product-app/services/product/internal/domain"
+	"product-app/services/product/internal/ports"
 )
 
 type FakeProductRepository struct {
 	products []domain.Product
 }
 
-func NewFakeProductRepository(initialProducts []domain.Product) persistence.IProductRepository {
+func NewFakeProductRepository(initialProducts []domain.Product) ports.ProductRepository {
 	return &FakeProductRepository{
 		products: initialProducts,
 	}
@@ -19,7 +19,16 @@ func NewFakeProductRepository(initialProducts []domain.Product) persistence.IPro
 
 // GetProductsByCategoryId implements [persistence.IProductRepository].
 func (fakeRepository *FakeProductRepository) GetProductsByCategoryId(categoryId int64) ([]domain.Product, error) {
-	panic("unimplemented")
+	var productsByCategory []domain.Product
+	for _, product := range fakeRepository.products {
+		if product.CategoryID == categoryId {
+			productsByCategory = append(productsByCategory, product)
+		}
+	}
+	if len(productsByCategory) == 0 {
+		return nil, errors.New(fmt.Sprintf("No products found with category id %d", categoryId))
+	}
+	return productsByCategory, nil
 }
 
 // DeleteAllProducts implements persistence.IProductRepository.
