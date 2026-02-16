@@ -27,7 +27,7 @@ func setupProductService() usecase.IProductService {
 	}
 
 	fakeRepository := NewFakeProductRepository(initialProducts)
-	return usecase.NewProductService(fakeRepository)
+	return usecase.NewProductService(fakeRepository, nil)
 }
 
 func Test_ShouldGetAllProducts(t *testing.T) {

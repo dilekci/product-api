@@ -38,7 +38,7 @@ func setupProductController() *httpcontroller.ProductController {
 	}
 
 	fakeRepo := NewFakeProductRepository(initialProducts)
-	productService := usecase.NewProductService(fakeRepo)
+	productService := usecase.NewProductService(fakeRepo, nil)
 	return httpcontroller.NewProductController(productService)
 }
 func Test_ShouldGetProductId(t *testing.T) {
