@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"product-app/services/product/internal/adapters/http/controller"
+	"product-app/services/product/internal/adapters/kafka"
 	"product-app/services/product/internal/adapters/postgresql"
 	pgcommon "product-app/services/product/internal/adapters/postgresql/common"
 	"product-app/services/product/internal/config"
@@ -32,7 +33,8 @@ func buildServer(ctx context.Context) *echo.Echo {
 
 func registerRoutes(e *echo.Echo, dbPool *pgxpool.Pool) {
 	productRepository := postgresql.NewProductRepository(dbPool)
-	productService := usecase.NewProductService(productRepository)
+	publisher := kafka.NewProducerAdapter([]string{"kafka:9092"}, "product.events")
+	productService := usecase.NewProductService(productRepository, publisher)
 	productController := controller.NewProductController(productService)
 
 	productController.RegisterRoutes(e)

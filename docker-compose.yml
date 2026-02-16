@@ -12,11 +12,14 @@ services:
       DB_MAX_CONNECTIONS: 10
       DB_MAX_IDLE_SECONDS: 30
       JWT_SECRET: change-me-in-production
+      KAFKA_BROKERS: kafka:9092  # ✅ Kafka broker adresi
     ports:
       - "8081:8081"
     depends_on:
       product-db:
         condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - app-net
 
@@ -52,11 +55,14 @@ services:
       DB_MAX_CONNECTIONS: 10
       DB_MAX_IDLE_SECONDS: 30
       JWT_SECRET: change-me-in-production
+      KAFKA_BROKERS: kafka:9092  # ✅ Kafka broker adresi
     ports:
       - "8082:8082"
     depends_on:
       category-db:
         condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - app-net
 
@@ -92,11 +98,14 @@ services:
       DB_MAX_CONNECTIONS: 10
       DB_MAX_IDLE_SECONDS: 30
       JWT_SECRET: change-me-in-production
+      KAFKA_BROKERS: kafka:9092  # ✅ Kafka broker adresi
     ports:
       - "8083:8083"
     depends_on:
       user-db:
         condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - app-net
 
@@ -144,6 +153,56 @@ services:
     networks:
       - app-net
 
+  # ✅ Kafka - Confluent image kullanıyoruz
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:9094'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9094'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ✅ Kafka UI - Mesajları görmek için
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8089:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - app-net
+
 volumes:
   productdata:
   categorydata:
@@ -151,3 +210,4 @@ volumes:
 
 networks:
   app-net:
+    driver: bridge

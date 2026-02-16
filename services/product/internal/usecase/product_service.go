@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"product-app/services/product/internal/domain"
 	"product-app/services/product/internal/ports"
@@ -21,11 +22,13 @@ type IProductService interface {
 
 type ProductService struct {
 	productRepository ports.ProductRepository
+	eventPublisher    ports.EventPublisher
 }
 
-func NewProductService(productRepository ports.ProductRepository) IProductService {
+func NewProductService(productRepository ports.ProductRepository, eventPublisher ports.EventPublisher) IProductService {
 	return &ProductService{
 		productRepository: productRepository,
+		eventPublisher:    eventPublisher,
 	}
 }
 func (productService *ProductService) Add(productCreate model.ProductCreate) error {
@@ -33,7 +36,7 @@ func (productService *ProductService) Add(productCreate model.ProductCreate) err
 	if validateError != nil {
 		return validateError
 	}
-	return productService.productRepository.AddProduct(domain.Product{
+	newProduct := domain.Product{
 		Name:        productCreate.Name,
 		Price:       productCreate.Price,
 		Description: productCreate.Description,
@@ -41,7 +44,14 @@ func (productService *ProductService) Add(productCreate model.ProductCreate) err
 		Store:       productCreate.Store,
 		ImageUrls:   productCreate.ImageUrls,
 		CategoryID:  productCreate.CategoryID,
-	})
+	}
+	if err := productService.productRepository.AddProduct(newProduct); err != nil {
+		return err
+	}
+	if productService.eventPublisher != nil {
+		_ = productService.eventPublisher.Publish(context.Background(), "product.created", newProduct)
+	}
+	return nil
 
 }
 func (productService *ProductService) DeleteById(productId int64) error {

@@ -1,6 +1,6 @@
 ## Product Platform (Go Microservices)
 
-Product, Category, and User/Auth services built with Go + Echo. Each service is isolated with its own database, and shared cross‑cutting concerns live under `shared/`.
+Production‑oriented Go microservices with strict bounded contexts, isolated persistence, event streaming via Kafka, and metrics via Prometheus/Grafana. Each service follows a Clean Architecture layout (usecase → ports → adapters).
 
 ---
 
@@ -8,29 +8,35 @@ Product, Category, and User/Auth services built with Go + Echo. Each service is 
 
 - Overview
 - Architecture
-- Services and Ports
+- Service Map
 - Run (Docker)
-- Environment Variables
+- Configuration
+- Kafka Integration
+- Observability
 - API Quick Test
 - Tests
+- Troubleshooting
 
 ---
 
 ### Overview
 
-This repository contains three microservices:
+**Services**
+- `product-service` (port `8081`) — product CRUD, publishes domain events
+- `category-service` (port `8082`) — category CRUD, consumes product events
+- `user-service` (port `8083`) — auth + user CRUD, JWT issuer
 
-- `product-service` (port `8081`) — product CRUD
-- `category-service` (port `8082`) — category CRUD
-- `user-service` (port `8083`) — auth + user CRUD (JWT issuer)
-
-Each service has its own PostgreSQL database.
+**Infrastructure**
+- PostgreSQL per service
+- Kafka for event streaming
+- Prometheus for metrics
+- Grafana for dashboards
 
 ---
 
 ### Architecture
 
-**High-level structure**
+**Repository layout**
 
 ```mermaid
 graph TD
@@ -42,7 +48,7 @@ graph TD
   G --> F
 ```
 
-**Inside each service (Clean Architecture aligned)**
+**Per‑service Clean Architecture**
 
 ```mermaid
 graph TD
@@ -50,17 +56,31 @@ graph TD
   B --> C["usecase"]
   C --> D["ports"]
   E["adapters/postgresql"] --> D
-  C --> F["domain"]
+  F["adapters/kafka"] --> D
+  C --> G["domain"]
 ```
 
-**Why this structure matters**
-- Clear boundaries and dependency inversion
-- Easier testing (usecase depends on interfaces)
-- Replaceable infrastructure per service
+**Event flow**
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant User as user-service
+  participant Product as product-service
+  participant Kafka
+  participant Category as category-service
+
+  Client->>User: POST /auth/login
+  User-->>Client: JWT
+  Client->>Product: POST /products (JWT)
+  Product->>Kafka: product.created
+  Kafka-->>Category: product.created
+  Category-->>Category: handle event
+```
 
 ---
 
-### Services and Ports
+### Service Map
 
 | Service | Port | Database | DB Port |
 |---|---|---|---|
@@ -68,6 +88,7 @@ graph TD
 | category-service | 8082 | category_db | 6434 |
 | user-service | 8083 | user_db | 6435 |
 
+Kafka UI: `http://localhost:8089`  
 Prometheus: `http://localhost:9090`  
 Grafana: `http://localhost:3000` (admin/admin)
 
@@ -76,45 +97,105 @@ Grafana: `http://localhost:3000` (admin/admin)
 ### Run (Docker)
 
 ```bash
-docker compose up --build product product-db category category-db user user-db prometheus grafana
+docker compose up --build \
+  kafka kafka-ui \
+  product product-db \
+  category category-db \
+  user user-db \
+  prometheus grafana
+```
+
+Stop:
+```bash
+docker compose down
 ```
 
 ---
 
-### Environment Variables
+### Configuration
 
-All services use the same variable names:
+All services accept the same config keys:
 
-- `DB_HOST`
-- `DB_PORT`
-- `DB_USER`
-- `DB_PASSWORD`
-- `DB_NAME`
-- `DB_MAX_CONNECTIONS`
-- `DB_MAX_IDLE_SECONDS`
-- `JWT_SECRET`
+| Variable | Example | Purpose |
+|---|---|---|
+| `DB_HOST` | `product-db` | DB host inside compose network |
+| `DB_PORT` | `5432` | DB port |
+| `DB_USER` | `postgres` | DB user |
+| `DB_PASSWORD` | `postgres` | DB password |
+| `DB_NAME` | `product_db` | DB name |
+| `DB_MAX_CONNECTIONS` | `10` | Pool size |
+| `DB_MAX_IDLE_SECONDS` | `30` | Pool idle timeout |
+| `JWT_SECRET` | `change-me-in-production` | JWT signing secret (shared) |
+| `KAFKA_BROKERS` | `kafka:9092` | Kafka bootstrap |
 
-Make sure `JWT_SECRET` is the same for all services so tokens are verifiable.
+**Notes**
+- All services must share the same `JWT_SECRET`.
+- `KAFKA_BROKERS` defaults to `kafka:9092` in compose.
+
+---
+
+### Kafka Integration
+
+**Producer**
+- `product-service` publishes to topic `product.events`.
+- Publish happens after product creation.
+
+**Consumer**
+- `category-service` consumes `product.events`.
+- Current handler logs messages; extend for projections/cache.
+
+**Current event payload**
+```json
+{
+  "name": "AirFryer",
+  "price": 1000,
+  "description": "Digital air fryer",
+  "discount": 10,
+  "store": "ABC TECH",
+  "image_urls": [],
+  "category_id": 1
+}
+```
+
+**Recommended evolution**
+- Add envelope fields: `event_type`, `event_version`, `occurred_at`.
+- Keep stable schema to avoid breaking consumers.
+
+---
+
+### Observability
+
+**Metrics endpoints**
+- `http://localhost:8081/metrics`
+- `http://localhost:8082/metrics`
+- `http://localhost:8083/metrics`
+
+**Prometheus**
+- Scrapes services using `observability/prometheus.yml`.
+
+**Grafana**
+- Add Prometheus datasource: `http://prometheus:9090`.
+- Import dashboards as needed.
 
 ---
 
 ### API Quick Test
 
-**Register** (user-service)
+**Register**
 ```bash
 curl -X POST http://localhost:8083/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"john","email":"john@test.com","password":"secret123","first_name":"John","last_name":"Doe"}'
 ```
 
-**Login** (token)
+**Login**
 ```bash
 curl -X POST http://localhost:8083/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username_or_email":"john","password":"secret123"}'
 ```
 
-**Create Category** (category-service, JWT required)
+**Create Category**
 ```bash
 curl -X POST http://localhost:8082/api/v1/categories \
   -H "Authorization: Bearer <TOKEN>" \
@@ -122,7 +203,7 @@ curl -X POST http://localhost:8082/api/v1/categories \
   -d '{"name":"Electronics","description":"Devices"}'
 ```
 
-**Create Product** (product-service, JWT required)
+**Create Product**
 ```bash
 curl -X POST http://localhost:8081/api/v1/products \
   -H "Authorization: Bearer <TOKEN>" \
@@ -130,16 +211,25 @@ curl -X POST http://localhost:8081/api/v1/products \
   -d '{"name":"AirFryer","price":1000,"description":"Digital air fryer","discount":10,"store":"ABC TECH","category_id":1}'
 ```
 
+**Verify Kafka event**
+```bash
+docker compose logs -f category
+```
+Expected log:
+```
+category-service received: {...}
+```
+
 ---
 
 ### Tests
 
-Run all service tests:
+All services:
 ```bash
 go test ./services/... -v
 ```
 
-Run per service:
+Per service:
 ```bash
 go test ./services/product/... -v
 go test ./services/category/... -v
@@ -148,8 +238,26 @@ go test ./services/user/... -v
 
 ---
 
-### Notes
+### Troubleshooting
 
-- Metrics endpoints are exposed at `/metrics` (e.g. `http://localhost:8081/metrics`).
-- Prometheus scrapes all three services.
-- Grafana is available on port `3000`.
+**Kafka fails to start / unhealthy**
+```bash
+docker compose down
+docker compose up -d kafka kafka-ui
+```
+Ensure `CLUSTER_ID` is set in compose.
+
+**JWT invalid between services**
+- All services must share the same `JWT_SECRET`.
+
+**Prometheus shows DOWN**
+- Verify services are running and `/metrics` endpoints are reachable.
+
+
+---
+
+### Deployment / CI (Short)
+
+- Build images locally: `docker compose build`
+- Run tests in CI: `go test ./services/... -v`
+- Release strategy: tag a commit and publish images from CI
