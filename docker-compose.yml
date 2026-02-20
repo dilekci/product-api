@@ -128,6 +128,49 @@ services:
     networks:
       - app-net
 
+  order:
+    build:
+      context: .
+      dockerfile: services/order/Dockerfile
+    environment:
+      DB_HOST: order-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: order_db
+      DB_MAX_CONNECTIONS: 10
+      DB_MAX_IDLE_SECONDS: 30
+      JWT_SECRET: change-me-in-production
+      KAFKA_BROKERS: kafka:9092  # ✅ Kafka broker adresi
+    ports:
+      - "8084:8084"
+    depends_on:
+      order-db:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    networks:
+      - app-net
+
+  order-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: order_db
+    ports:
+      - "6436:5432"
+    volumes:
+      - orderdata:/var/lib/postgresql/data
+      - ./services/order/migration:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-net
+
   prometheus:
     image: prom/prometheus:v2.50.1
     volumes:
@@ -138,6 +181,7 @@ services:
       - product
       - category
       - user
+      - order
     networks:
       - app-net
 
@@ -207,6 +251,7 @@ volumes:
   productdata:
   categorydata:
   userdata:
+  orderdata:
 
 networks:
   app-net:
