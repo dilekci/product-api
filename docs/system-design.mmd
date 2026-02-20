@@ -1,0 +1,38 @@
+flowchart LR
+  U["User / Client"] --> CDN["CDN / Static (optional)"]
+  CDN --> LB["Load Balancer / Reverse Proxy (Nginx)"]
+  LB --> GW["API Gateway (optional)"]
+
+  GW --> US["user-service"]
+  GW --> PS["product-service"]
+  GW --> CS["category-service"]
+  GW --> OS["order-service (planned)"]
+  GW --> NS["notification-service (planned)"]
+
+  US --> UDB["User DB (PostgreSQL)"]
+  PS --> PDB["Product DB (PostgreSQL)"]
+  CS --> CDB["Category DB (PostgreSQL)"]
+  OS --> ODB["Order DB (PostgreSQL)"]
+  NS --> NDB["Notification DB (PostgreSQL or Redis-only)"]
+
+  US --> REDIS["Redis (session store)"]
+  OS --> REDIS
+  PS --> REDIS["Redis (cache)"]
+
+  US --> KAFKA["Kafka Broker"]
+  OS --> KAFKA
+  PS --> KAFKA
+
+  KAFKA --> NS
+  KAFKA --> ANALYTICS["analytics-service (optional)"]
+  KAFKA --> INVENTORY["inventory-service (optional)"]
+
+  subgraph Observability
+    PROM["Prometheus"] --> GRAF["Grafana"]
+  end
+
+  US -.-> PROM
+  PS -.-> PROM
+  CS -.-> PROM
+  OS -.-> PROM
+  NS -.-> PROM
